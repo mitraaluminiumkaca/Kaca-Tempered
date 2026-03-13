@@ -1,0 +1,129 @@
+<div id="adminModal">
+    <div class="modal-content">
+        <div style="display:flex; justify-content:space-between">
+            <h3>Panel Admin & History Penjualan</h3>
+            <button onclick="tutupAdmin()" style="width:80px; background:#999; color:white; border:none;">TUTUP</button>
+        </div>
+        <hr>
+        
+        <div style="margin-bottom:20px;">
+            <button onclick="showTab('tabHarga')" style="width:auto; padding:10px 20px; background:var(--info); color:white; border:none;">Data Kaca</button>
+            <button onclick="showTab('tabHistory')" style="width:auto; padding:10px 20px; background:var(--primary); color:white; border:none;">History Penjualan</button>
+        </div>
+
+        <div id="tabHarga">
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; background:#f9f9f9; padding:15px; border-radius:8px;">
+                <input type="text" id="admNama" placeholder="Nama Kaca">
+                <input type="number" id="admHarga" placeholder="Harga/m2">
+                <button onclick="updateHarga()" style="background:var(--success); color:white; border:none;">Simpan Kaca</button>
+            </div>
+            <table style="margin-top:15px;">
+                <thead><tr><th>Nama Kaca</th><th>Harga/m2</th><th>Aksi</th></tr></thead>
+                <tbody id="adminTableBody"></tbody>
+            </table>
+        </div>
+
+        <div id="tabHistory" style="display:none;">
+            <h4>Daftar Transaksi Terakhir</h4>
+            <table style="margin-top:10px;">
+                <thead>
+                    <tr>
+                        <th>Tanggal</th>
+                        <th>Nota</th>
+                        <th>Pembeli</th>
+                        <th>Total</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTableBody"></tbody>
+            </table>
+            <button onclick="hapusSemuaHistory()" style="background:var(--danger); color:white; border:none; margin-top:20px; width:auto; padding:10px;">🗑️ Hapus Semua History</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Inisialisasi Data Lengkap
+    let db = JSON.parse(localStorage.getItem('mitraKaca_v7_db')) || {
+        inventory: { "Clear 5mm": { harga: 350000, gm: 15000, bor: 5000, pojok: 5000, tepi: 7000, bev2: 15000, bev3: 20000 } },
+        kop: { nama: "MITRA KACA", alamat: "Jl. Alamat Toko Anda" },
+        history: [] // Tempat menyimpan history
+    };
+
+    // Fungsi menampilkan tab
+    function showTab(tabId) {
+        document.getElementById('tabHarga').style.display = (tabId === 'tabHarga') ? 'block' : 'none';
+        document.getElementById('tabHistory').style.display = (tabId === 'tabHistory') ? 'block' : 'none';
+        if(tabId === 'tabHistory') renderHistory();
+    }
+
+    // Fungsi Render History
+    function renderHistory() {
+        const body = document.getElementById('historyTableBody');
+        body.innerHTML = "";
+        
+        // Menampilkan history dari yang terbaru (dibalik)
+        [...db.history].reverse().forEach((trx, index) => {
+            body.innerHTML += `
+                <tr>
+                    <td>${trx.tgl}</td>
+                    <td>${trx.nota}</td>
+                    <td>${trx.pembeli}</td>
+                    <td>Rp ${Math.round(trx.total).toLocaleString()}</td>
+                    <td>
+                        <button onclick="lihatDetailHistory(${db.history.length - 1 - index})" style="background:var(--info); color:white; border:none; padding:5px; width:auto;">Lihat</button>
+                    </td>
+                </tr>`;
+        });
+    }
+
+    // Fungsi saat Klik Simpan & Print
+    function prosesTransaksi() {
+        if(keranjang.length === 0) return alert("Keranjang kosong!");
+        
+        const total = keranjang.reduce((sum, it) => sum + it.subtotal, 0);
+        const notaBaru = {
+            nota: "N-" + Date.now().toString().slice(-6),
+            tgl: new Date().toLocaleString('id-ID'),
+            pembeli: document.getElementById('pembeli').value,
+            items: [...keranjang],
+            total: total
+        };
+
+        // Simpan ke History di Database
+        db.history.push(notaBaru);
+        saveDB();
+
+        // Siapkan tampilan nota untuk diprint
+        document.getElementById('notaNomor').innerText = notaBaru.nota;
+        document.getElementById('notaTgl').innerText = notaBaru.tgl;
+        document.getElementById('notaCust').innerText = notaBaru.pembeli;
+        
+        window.print();
+        
+        keranjang = [];
+        renderBill();
+        alert("Transaksi Tersimpan di History!");
+    }
+
+    function hapusSemuaHistory() {
+        if(confirm("Apakah Anda yakin ingin menghapus SEMUA history penjualan?")) {
+            db.history = [];
+            saveDB();
+            renderHistory();
+        }
+    }
+
+    function lihatDetailHistory(idx) {
+        const trx = db.history[idx];
+        alert(`Detail Nota: ${trx.nota}\nPembeli: ${trx.pembeli}\nTotal: Rp ${trx.total.toLocaleString()}\n\nData ini tersimpan permanen di browser Mac Anda.`);
+    }
+
+    // Pastikan fungsi saveDB menyertakan history
+    function saveDB() {
+        localStorage.setItem('mitraKaca_v7_db', JSON.stringify(db));
+        renderUI();
+    }
+    
+    // ... sisa fungsi lainnya tetap sama ...
+</script>
